@@ -39,8 +39,21 @@ function ensureCert() {
   fs.mkdirSync(dir, { recursive: true });
   const san = ['DNS:localhost', 'IP:127.0.0.1'].concat(lanIPs().map(ip => 'IP:' + ip)).join(',');
   const base = ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', cert, '-days', '825', '-subj', '/CN=Magic Mirror'];
-  for (const args of [base.concat(['-addext', 'subjectAltName=' + san]), base]) {
-    try { execFileSync('openssl', args, { stdio: 'ignore' }); return read(); } catch (e) { /* bandome kitą variantą */ }
+  // Windows: openssl dažniausiai yra Git for Windows aplanke, bet ne PATH kintamajame
+  const bins = ['openssl'];
+  if (process.platform === 'win32') {
+    for (const root of [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs')]) {
+      if (!root) continue;
+      for (const sub of ['Git\\usr\\bin\\openssl.exe', 'Git\\mingw64\\bin\\openssl.exe']) {
+        const f = path.join(root, sub);
+        if (fs.existsSync(f)) bins.push(f);
+      }
+    }
+  }
+  for (const bin of bins) {
+    for (const args of [base.concat(['-addext', 'subjectAltName=' + san]), base]) {
+      try { execFileSync(bin, args, { stdio: 'ignore' }); return read(); } catch (e) { /* bandome kitą variantą */ }
+    }
   }
   return null;
 }

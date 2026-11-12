@@ -19,11 +19,20 @@ Vaizdas apdorojamas tik telefone (MediaPipe naršyklėje). Į serverį ir televi
 
 ## Paleidimas su televizoriumi
 
-Reikia kompiuterio su [Node.js](https://nodejs.org) 18+ ir `openssl` (Mac ir Linux jį turi; Windows – per Git for Windows). Papildomų paketų nereikia.
+Reikia kompiuterio su [Node.js](https://nodejs.org) 18+ ir `openssl` (Mac ir Linux jį turi; Windows – įdiekite [Git for Windows](https://git-scm.com), serveris jo `openssl` ras pats). Papildomų paketų nereikia.
+
+Paleidimas dukart spustelėjus:
+
+- **Windows:** `start-windows.bat`
+- **Mac:** `start-mac.command` (pirmą kartą: dešinys pelės klavišas → „Open“ → „Open“)
+
+Arba terminale:
 
 ```bash
 node server.js
 ```
+
+Langą laikykite atidarytą, kol žaidžiate. Jei Windows paklaus, ar leisti Node.js naudotis tinklu, pasirinkite „Leisti“ privačiame tinkle.
 
 1. Kompiuteris, telefonas ir televizorius turi būti tame pačiame Wi-Fi.
 2. Televizoriaus naršyklėje atidarykite adresą, kurį parodė serveris, pvz. `http://192.168.1.20:8080/tv`.
@@ -45,6 +54,8 @@ Judesių atpažinimo modeliai (~10 MB) įkeliami iš `cdn.jsdelivr.net` ir `stor
 
 ```
 server.js            HTTP/HTTPS serveris ir WebSocket perdavimas be priklausomybių
+start-windows.bat    paleidimas dukart spustelėjus (Windows)
+start-mac.command    paleidimas dukart spustelėjus (Mac)
 docs/index.html      telefono programa
 docs/tv.html         televizoriaus ekranas su QR kodu
 docs/js/app.js       kamera, atpažinimas, užduočių eiga, monetos, parduotuvė, tėvų nustatymai
