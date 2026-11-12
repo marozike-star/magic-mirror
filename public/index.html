@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#FFF7E8">
+<title>Magic Mirror</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="css/game.css">
+<style>
+  body { display: flex; flex-direction: column; }
+  .screen { flex: 1; display: flex; flex-direction: column; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: max(12px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px)); gap: 14px; max-width: 560px; width: 100%; margin: 0 auto; }
+  .topbar { display: flex; align-items: center; gap: 10px; }
+  .logo { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1; flex: 1; letter-spacing: -.01em; }
+  .logo span { color: var(--tomato); }
+  .pill { display: flex; align-items: center; gap: 6px; background: var(--card); border-radius: 999px; padding: 6px 14px 6px 10px; font-family: var(--display); font-size: 22px; font-weight: 800; box-shadow: 0 4px 0 rgba(35, 32, 74, .14); font-variant-numeric: tabular-nums; }
+  .iconbtn { width: 48px; height: 48px; border-radius: 16px; border: 0; background: var(--card); box-shadow: 0 4px 0 rgba(35, 32, 74, .14); display: grid; place-items: center; position: relative; overflow: hidden; }
+  .iconbtn svg { width: 24px; height: 24px; }
+  .iconbtn .fill { position: absolute; left: 0; bottom: 0; width: 100%; height: 0; background: rgba(53, 184, 107, .35); }
+  .stage { position: relative; border-radius: 28px; overflow: hidden; aspect-ratio: 1 / 1; max-width: 100%; box-shadow: 0 8px 0 rgba(35, 32, 74, .14); background: #BFE8FF; }
+  .stage canvas { width: 100%; height: 100%; display: block; }
+  .stage .name { position: absolute; left: 14px; bottom: 12px; background: var(--card); border-radius: 999px; padding: 4px 14px; font-family: var(--display); font-weight: 800; font-size: 20px; }
+  .big-btns { display: grid; gap: 12px; }
+  .bbtn { border: 0; border-radius: 22px; padding: 16px 18px; display: flex; align-items: center; gap: 14px; font-family: var(--display); font-weight: 800; font-size: 26px; text-align: left; color: #fff; min-height: 76px; transition: transform .08s; }
+  .bbtn:active { transform: translateY(5px); }
+  .bbtn small { display: block; font-family: var(--body); font-size: 14px; font-weight: 700; opacity: .92; }
+  .bbtn .ic { width: 50px; height: 50px; border-radius: 16px; background: rgba(255, 255, 255, .25); display: grid; place-items: center; font-size: 28px; flex: none; }
+  .b-play { background: var(--tomato); box-shadow: 0 6px 0 var(--tomato-d); }
+  .b-free { background: var(--sky-d); box-shadow: 0 6px 0 #1E7398; }
+  .b-shop { background: var(--grass); box-shadow: 0 6px 0 var(--grass-d); }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tvchip { display: flex; align-items: center; gap: 10px; background: var(--card); border-radius: 18px; padding: 10px 14px; font-size: 15px; border: 0; text-align: left; width: 100%; }
+  .tvchip .dot { width: 12px; height: 12px; border-radius: 50%; background: #C9C2B0; flex: none; }
+  .tvchip.on .dot { background: var(--grass); box-shadow: 0 0 0 4px rgba(53, 184, 107, .25); }
+  h2 { font-family: var(--display); font-size: 30px; margin: 0; line-height: 1; flex: 1; }
+  .sub { color: var(--ink-soft); font-weight: 700; margin: 0; font-size: 15px; line-height: 1.4; }
+  /* parduotuvė */
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .item { background: var(--card); border-radius: 22px; padding: 8px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 5px 0 rgba(35, 32, 74, .12); }
+  .item canvas { width: 100%; aspect-ratio: 1 / 1; border-radius: 16px; display: block; }
+  .item .nm { font-family: var(--display); font-weight: 800; font-size: 19px; line-height: 1.1; padding-inline: 4px; }
+  .item button { border: 0; border-radius: 14px; padding: 10px; font-family: var(--display); font-weight: 800; font-size: 18px; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 48px; }
+  .buy { background: var(--sun); box-shadow: 0 4px 0 var(--sun-d); }
+  .buy:disabled { background: #EFE7D6; box-shadow: none; color: #A39E8C; cursor: default; }
+  .equip { background: var(--sky); box-shadow: 0 4px 0 var(--sky-d); }
+  .equipped { background: var(--grass); color: #fff; box-shadow: 0 4px 0 var(--grass-d); }
+  .item.locked .lockart { aspect-ratio: 1/1; border-radius: 16px; background: #EFE7D6; display: grid; place-items: center; font-size: 56px; filter: grayscale(.4); opacity: .8; }
+  .soon { font-size: 14px; color: var(--ink-soft); text-align: center; padding: 10px; }
+  .section-label { font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft); margin: 6px 0 -4px; }
+  /* tėvams */
+  .panel { background: var(--card); border-radius: 22px; padding: 16px; display: grid; gap: 12px; }
+  .panel h3 { margin: 0; font-family: var(--display); font-size: 21px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+  .seg button { border: 2px solid var(--line); background: var(--paper); border-radius: 14px; padding: 10px 14px; font-weight: 800; min-height: 46px; }
+  .seg button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .danger { border: 0; background: #FFE3DC; color: var(--tomato-d); border-radius: 14px; padding: 12px; font-weight: 800; }
+  .privacy { font-size: 14px; line-height: 1.5; color: var(--ink-soft); margin: 0; padding-left: 18px; }
+  /* žaidimas */
+  #play { position: fixed; inset: 0; background: #000; z-index: 5; }
+  #play canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .closebtn { position: absolute; top: max(14px, env(safe-area-inset-top, 0px)); left: max(14px, env(safe-area-inset-left, 0px)); width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--card); box-shadow: 0 5px 0 rgba(35, 32, 74, .2); z-index: 3; display: grid; place-items: center; }
+  .closebtn svg { width: 26px; height: 26px; }
+  .selfview { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); bottom: max(14px, env(safe-area-inset-bottom, 0px)); width: 96px; height: 96px; border-radius: 50%; overflow: hidden; border: 4px solid #fff; z-index: 3; background: #222; }
+  .selfview video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+  .endbtns { position: absolute; left: 50%; bottom: max(24px, calc(env(safe-area-inset-bottom, 0px) + 16px)); transform: translateX(-50%); display: flex; gap: 12px; z-index: 3; width: min(460px, calc(100% - 32px)); }
+  .endbtns .bbtn { flex: 1; justify-content: center; font-size: 22px; min-height: 64px; }
+  .loading { position: absolute; inset: 0; display: grid; place-items: center; z-index: 2; color: #fff; font-family: var(--display); font-size: 26px; text-align: center; padding: 24px; background: rgba(35, 32, 74, .55); }
+  .loading .spin { width: 56px; height: 56px; border-radius: 50%; border: 7px solid rgba(255, 255, 255, .3); border-top-color: var(--sun); margin: 0 auto 14px; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .tvplay .selfview { width: 140px; height: 140px; }
+  .confirm { display: flex; gap: 8px; }
+  .confirm button { flex: 1; }
+  @media (prefers-reduced-motion: reduce) { .loading .spin { animation-duration: 3s; } }
+</style>
+</head>
+<body>
+
+<!-- PRADŽIA -->
+<section id="home" class="screen">
+  <div class="topbar">
+    <div class="logo">Magic<span>Mirror</span></div>
+    <div class="pill"><span class="coin"></span><b id="homeCoins">0</b></div>
+    <button class="iconbtn" id="parentBtn" aria-label="Tėvams: palaikykite 2 sekundes">
+      <span class="fill" id="parentFill"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </button>
+  </div>
+  <div class="stage"><canvas id="homeCanvas"></canvas><div class="name">Šuniukas Rudis</div></div>
+  <div class="big-btns">
+    <button class="bbtn b-play" id="btnTasks"><span class="ic">⭐</span><span>Užduotys<small>Judėk ir rink monetas</small></span></button>
+    <div class="row2">
+      <button class="bbtn b-free" id="btnFree" style="font-size:22px"><span class="ic" style="width:42px;height:42px;font-size:22px">🪞</span>Laisvai</button>
+      <button class="bbtn b-shop" id="btnShop" style="font-size:22px"><span class="ic" style="width:42px;height:42px;font-size:22px">🎁</span>Daiktai</button>
+    </div>
+  </div>
+  <button class="tvchip" id="tvChip"><span class="dot"></span><span id="tvText">Kaip žaisti televizoriuje?</span></button>
+</section>
+
+<!-- PARDUOTUVĖ -->
+<section id="shop" class="screen" hidden>
+  <div class="topbar">
+    <button class="iconbtn back" aria-label="Atgal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>Daiktai</h2>
+    <div class="pill"><span class="coin"></span><b id="shopCoins">0</b></div>
+  </div>
+  <div class="section-label">Aksesuarai</div>
+  <div class="grid" id="accGrid"></div>
+  <div class="section-label">Pasauliai</div>
+  <div class="grid" id="bgGrid"></div>
+  <div class="section-label">Nauji draugai</div>
+  <div class="grid" id="charGrid"></div>
+</section>
+
+<!-- TĖVAMS -->
+<section id="parents" class="screen" hidden>
+  <div class="topbar">
+    <button class="iconbtn back" aria-label="Atgal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>Tėvams</h2>
+  </div>
+  <div class="panel">
+    <h3>Žaidimo laikas per dieną</h3>
+    <div class="seg" id="segLimit">
+      <button data-v="10">10 min</button><button data-v="20">20 min</button><button data-v="30">30 min</button><button data-v="0">Be ribos</button>
+    </div>
+    <p class="sub" id="usedToday"></p>
+  </div>
+  <div class="panel">
+    <h3>Garsai</h3>
+    <div class="seg" id="segVoice"><button data-v="1">Balsas įjungtas</button><button data-v="0">Be balso</button></div>
+    <div class="seg" id="segSound"><button data-v="1">Efektai įjungti</button><button data-v="0">Be efektų</button></div>
+  </div>
+  <div class="panel">
+    <h3>Privatumas</h3>
+    <ul class="privacy">
+      <li>Kamera įsijungia tik žaidimo metu ir išsijungia jį uždarius.</li>
+      <li>Vaizdas apdorojamas tik šiame telefone. Niekas neįrašoma ir nesaugoma.</li>
+      <li>Į televizorių siunčiami tik 33 judesio taškai ir išraiškos skaičiai, ne vaizdas.</li>
+      <li>Nereikia vardo, paskyros ar kitų duomenų. Nėra reklamų ir pirkimų.</li>
+      <li>Progresas saugomas tik šiame telefone.</li>
+    </ul>
+  </div>
+  <div class="panel">
+    <h3>Progresas</h3>
+    <p class="sub" id="progressText"></p>
+    <button class="danger" id="resetBtn">Ištrinti progresą</button>
+    <div class="confirm" id="resetConfirm" hidden>
+      <button class="danger" id="resetYes">Taip, ištrinti</button>
+      <button class="seg" style="border:2px solid var(--line);border-radius:14px;background:var(--paper);font-weight:800" id="resetNo">Atšaukti</button>
+    </div>
+  </div>
+</section>
+
+<!-- TV INSTRUKCIJA -->
+<section id="tvhelp" class="screen" hidden>
+  <div class="topbar">
+    <button class="iconbtn back" aria-label="Atgal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <h2>Žaisti per TV</h2>
+  </div>
+  <div class="panel">
+    <h3>Būdas 1: QR kodas</h3>
+    <p class="sub">Televizoriaus naršyklėje atidarykite TV puslapį (adresą rodo kompiuteris, kuriame paleistas žaidimo serveris). Ekrane atsiras QR kodas. Nuskenuokite jį šiuo telefonu.</p>
+  </div>
+  <div class="panel">
+    <h3>Būdas 2: ekrano dubliavimas</h3>
+    <p class="sub">Įjunkite telefono ekrano rodymą televizoriuje (Smart View, Chromecast ar AirPlay) ir žaiskite čia. Šuniukas bus matomas dideliame ekrane.</p>
+  </div>
+  <div class="panel">
+    <h3>Patarimas</h3>
+    <p class="sub">Pastatykite telefoną stačiai ant lentynos maždaug juosmens aukštyje, 2–3 metrų atstumu, kad matytųsi visas vaikas.</p>
+  </div>
+</section>
+
+<!-- ŽAIDIMAS -->
+<section id="play" hidden>
+  <canvas id="playCanvas"></canvas>
+  <div class="hud" id="hud"></div>
+  <button class="closebtn" id="closePlay" aria-label="Baigti žaidimą"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <div class="selfview"><video id="cam" playsinline muted autoplay></video></div>
+  <div class="endbtns" id="endBtns" hidden>
+    <button class="bbtn b-play" id="againBtn">Dar kartą</button>
+    <button class="bbtn b-free" id="doneBtn">Baigti</button>
+  </div>
+  <div class="loading" id="loading" hidden><div><div class="spin"></div><span id="loadingText">Šuniukas ruošiasi…</span></div></div>
+</section>
+
+<script src="js/render.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/shared.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

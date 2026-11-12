@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magic Mirror TV</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Nunito:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="css/game.css">
+<style>
+  html, body { height: 100%; overflow: hidden; background: #7FD0FF; }
+  #tv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .pair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; gap: 4vw; align-items: center; background: var(--card); border-radius: 36px; padding: 3vw 4vw; box-shadow: 0 12px 0 rgba(35, 32, 74, .2); max-width: 92vw; }
+  .pair.mini { left: auto; top: auto; right: 2vw; bottom: 2vw; transform: none; padding: 1vw; gap: 1vw; border-radius: 20px; }
+  .pair.mini .ptext { display: none; }
+  .pair.mini #qr { width: 9vw; height: 9vw; }
+  #qr { width: 26vw; height: 26vw; max-width: 380px; max-height: 380px; }
+  #qr img, #qr canvas { width: 100% !important; height: 100% !important; image-rendering: pixelated; }
+  .ptext { max-width: 34vw; }
+  .ptext h1 { font-family: var(--display); font-size: 4.2vw; line-height: 1; margin: 0 0 1.2vw; }
+  .ptext h1 span { color: var(--tomato); }
+  .ptext ol { margin: 0; padding-left: 1.3em; font-size: 1.7vw; line-height: 1.5; color: var(--ink-soft); }
+  .code { margin-top: 1.4vw; font-family: var(--display); font-size: 1.6vw; }
+  .code b { font-size: 3vw; letter-spacing: .15em; color: var(--ink); background: var(--paper); border-radius: 12px; padding: 0 .4em; }
+  .url { margin-top: .8vw; font-size: 1.2vw; color: var(--ink-soft); word-break: break-all; }
+  .sound { position: absolute; left: 2vw; bottom: 2vw; border: 0; border-radius: 18px; padding: .6em 1.1em; font-family: var(--display); font-weight: 800; font-size: 1.8vw; background: var(--sun); box-shadow: 0 5px 0 var(--sun-d); }
+  .warn { color: var(--tomato-d); font-size: 1.3vw; margin-top: .8vw; }
+</style>
+</head>
+<body>
+<canvas id="tv"></canvas>
+<div class="hud" id="hud"></div>
+<div class="pair" id="pair">
+  <div id="qr" role="img" aria-label="QR kodas prisijungti telefonu"></div>
+  <div class="ptext">
+    <h1>Magic<span>Mirror</span></h1>
+    <ol>
+      <li>Prijunkite telefoną prie to paties Wi-Fi.</li>
+      <li>Nuskenuokite QR kodą telefono kamera.</li>
+      <li>Jei naršyklė įspės apie saugumą, pasirinkite „Tęsti“.</li>
+      <li>Pastatykite telefoną ir spauskite „Užduotys“.</li>
+    </ol>
+    <div class="code">Kambarys: <b id="code">····</b></div>
+    <div class="url" id="url"></div>
+    <div class="warn" id="warn" hidden></div>
+  </div>
+</div>
+<button class="sound" id="soundBtn">Įjungti garsą</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="js/render.js"></script>
+<script src="js/shared.js"></script>
+<script>
+(function () {
+  'use strict';
+  var MM = window.MM;
+  var scene = MM.Scene(document.getElementById('tv'));
+  var hud = MM.HUD(document.getElementById('hud'));
+  var pair = document.getElementById('pair');
+  var soundOn = false;
+
+  // Kambario kodas (išlieka perkrovus puslapį)
+  var code = '';
+  try { code = sessionStorage.getItem('mmRoom') || ''; } catch (e) { }
+  if (!code) {
+    var abc = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    for (var i = 0; i < 4; i++) code += abc[Math.floor(Math.random() * abc.length)];
+    try { sessionStorage.setItem('mmRoom', code); } catch (e) { }
+  }
+  document.getElementById('code').textContent = code;
+
+  fetch('/info').then(function (r) { return r.json(); }).then(function (info) {
+    var host = /^\d+\.\d+\.\d+\.\d+$/.test(location.hostname) && location.hostname !== '127.0.0.1' ? location.hostname : (info.ips[0] || location.hostname);
+    var url = info.httpsPort
+      ? 'https://' + host + ':' + info.httpsPort + '/?room=' + code
+      : 'http://' + host + ':' + info.httpPort + '/?room=' + code;
+    if (!info.httpsPort) {
+      var w = document.getElementById('warn'); w.hidden = false;
+      w.textContent = 'Serveris paleistas be https, todėl telefono kamera gali neįsijungti. Žr. README.';
+    }
+    document.getElementById('url').textContent = url;
+    if (window.QRCode) new QRCode(document.getElementById('qr'), { text: url, width: 380, height: 380, correctLevel: QRCode.CorrectLevel.M });
+    else document.getElementById('qr').textContent = 'QR kodas neįkeltas – įveskite adresą ranka.';
+  }).catch(function () {
+    document.getElementById('url').textContent = 'Nepavyko gauti serverio adreso.';
+  });
+
+  var last = null, lastAt = 0, prevUi = {};
+  MM.connect(code, 'tv', function (m) {
+    if (m.t !== 'f') return;
+    last = m; lastAt = performance.now();
+    var ui = m.ui || {};
+    if (ui.sayId && ui.sayId !== prevUi.sayId && soundOn) MM.speak(ui.say);
+    if (ui.celeb && ui.celeb !== prevUi.celeb && prevUi.celeb != null) {
+      var sz = scene.size(); MM.fx.burst(sz.W, sz.H, ui.phase === 'end' ? 140 : 80, true);
+      if (soundOn) { MM.sfx.fanfare(); setTimeout(function () { MM.sfx.coin(); }, 450); }
+    }
+    if (ui.bark && ui.bark !== prevUi.bark && prevUi.bark != null && soundOn) MM.sfx.bark();
+    prevUi = ui;
+  });
+
+  document.getElementById('soundBtn').onclick = function () {
+    soundOn = true; MM.sfx.unlock(); MM.sfx.bark(); MM.speak('Garsas įjungtas!');
+    this.hidden = true;
+  };
+
+  var t0 = performance.now();
+  function loop(now) {
+    var active = last && now - lastAt < 4000 && last.ui && last.ui.phase !== 'idle';
+    pair.classList.toggle('mini', !!active);
+    var eq = (last && last.eq) || { acc: [], bg: 'park' };
+    scene.draw({ t: (now - t0) / 1000, bg: eq.bg, acc: eq.acc || [], lm: active ? last.p : null, face: active ? last.f : null, aspect: last && last.a });
+    hud.update(active ? last.ui : { coins: last && last.ui ? last.ui.coins : 0, phase: 'idle' });
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
