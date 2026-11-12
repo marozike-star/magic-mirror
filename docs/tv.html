@@ -81,7 +81,7 @@
     if (window.QRCode) new QRCode(document.getElementById('qr'), { text: url, width: 380, height: 380, correctLevel: QRCode.CorrectLevel.M });
     else document.getElementById('qr').textContent = 'QR kodas neįkeltas – įveskite adresą ranka.';
   }).catch(function () {
-    document.getElementById('url').textContent = 'Nepavyko gauti serverio adreso.';
+    document.getElementById('url').textContent = 'Televizoriaus režimui reikia paleisti node server.js savo kompiuteryje (žr. README).';
   });
 
   var last = null, lastAt = 0, prevUi = {};

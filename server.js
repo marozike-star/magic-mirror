@@ -15,7 +15,7 @@ const { execFileSync } = require('child_process');
 
 const HTTP_PORT = +process.env.PORT || 8080;
 const HTTPS_PORT = +process.env.HTTPS_PORT || 8443;
-const PUBLIC = path.join(__dirname, 'public');
+const PUBLIC = path.join(__dirname, 'docs');
 const MAX_MSG = 64 * 1024;
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',

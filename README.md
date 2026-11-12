@@ -35,7 +35,7 @@ Telefoną geriausia pastatyti stačiai 2–3 m atstumu, juosmens aukštyje, kad 
 
 ## Paleidimas be serverio (tik telefonas)
 
-Įkelkite `public` aplanką į bet kurį https statinių failų talpinimą (GitHub Pages, Netlify ir pan.) ir atidarykite telefone. Į televizorių vaizdą galima perduoti telefono ekrano dubliavimu (Smart View, Chromecast, AirPlay).
+Žaidimas talpinamas GitHub Pages: https://marozike-star.github.io/magic-mirror/ – atidarykite šį adresą telefone. (`docs` aplanką galima įkelti ir į bet kurį kitą https talpinimą, pvz. Netlify.) Į televizorių vaizdą galima perduoti telefono ekrano dubliavimu (Smart View, Chromecast, AirPlay).
 
 ## Pirmo paleidimo metu reikia interneto
 
@@ -45,13 +45,13 @@ Judesių atpažinimo modeliai (~10 MB) įkeliami iš `cdn.jsdelivr.net` ir `stor
 
 ```
 server.js            HTTP/HTTPS serveris ir WebSocket perdavimas be priklausomybių
-public/index.html    telefono programa
-public/tv.html       televizoriaus ekranas su QR kodu
-public/js/app.js     kamera, atpažinimas, užduočių eiga, monetos, parduotuvė, tėvų nustatymai
-public/js/tasks.js   10 užduočių ir judesių detektoriai
-public/js/render.js  šuniuko, fonų ir konfeti piešimas
-public/js/shared.js  garsai, balsas, ryšys, ekrano informacija
-public/css/game.css  bendras stilius
+docs/index.html      telefono programa
+docs/tv.html         televizoriaus ekranas su QR kodu
+docs/js/app.js       kamera, atpažinimas, užduočių eiga, monetos, parduotuvė, tėvų nustatymai
+docs/js/tasks.js     10 užduočių ir judesių detektoriai
+docs/js/render.js    šuniuko, fonų ir konfeti piešimas
+docs/js/shared.js    garsai, balsas, ryšys, ekrano informacija
+docs/css/game.css    bendras stilius
 ```
 
 ## Žinomi apribojimai
