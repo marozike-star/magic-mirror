@@ -11,7 +11,6 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const os = require('os');
-const { execFileSync } = require('child_process');
 
 const HTTP_PORT = +process.env.PORT || 8080;
 const HTTPS_PORT = +process.env.HTTPS_PORT || 8443;
@@ -31,31 +30,72 @@ function lanIPs() {
   return out.sort((a, b) => (/^192\.168\./.test(b) ? 1 : 0) - (/^192\.168\./.test(a) ? 1 : 0));
 }
 
+/* ---------- Savarankiškai pasirašytas https sertifikatas (be openssl) ---------- */
+function der(tag, body) {
+  const n = body.length;
+  const len = n < 0x80 ? Buffer.from([n]) : n < 0x100 ? Buffer.from([0x81, n]) : Buffer.from([0x82, n >> 8, n & 0xff]);
+  return Buffer.concat([Buffer.from([tag]), len, body]);
+}
+const seq = (...items) => der(0x30, Buffer.concat(items));
+function oid(str) {
+  const p = str.split('.').map(Number), out = [40 * p[0] + p[1]];
+  for (const v of p.slice(2)) {
+    const b = [v & 0x7f]; let x = v >> 7;
+    while (x) { b.unshift((x & 0x7f) | 0x80); x >>= 7; }
+    out.push(...b);
+  }
+  return der(0x06, Buffer.from(out));
+}
+function utcTime(d) {
+  const z = n => String(n).padStart(2, '0');
+  return der(0x17, Buffer.from(z(d.getUTCFullYear() % 100) + z(d.getUTCMonth() + 1) + z(d.getUTCDate()) + z(d.getUTCHours()) + z(d.getUTCMinutes()) + z(d.getUTCSeconds()) + 'Z'));
+}
+
+function makeSelfSignedCert(ips) {
+  const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const sigAlg = seq(oid('1.2.840.113549.1.1.11'), Buffer.from([0x05, 0x00])); // sha256WithRSAEncryption
+  const name = seq(der(0x31, seq(oid('2.5.4.3'), der(0x0c, Buffer.from('Magic Mirror')))));
+  const serial = crypto.randomBytes(16); serial[0] &= 0x7f; serial[0] |= 0x01;
+  const now = Date.now();
+  const san = Buffer.concat([der(0x82, Buffer.from('localhost'))].concat(
+    ['127.0.0.1'].concat(ips).map(ip => der(0x87, Buffer.from(ip.split('.').map(Number))))));
+  const exts = der(0xa3, seq(
+    seq(oid('2.5.29.17'), der(0x04, der(0x30, san))),                                // subjectAltName
+    seq(oid('2.5.29.19'), der(0x04, seq()))                                          // basicConstraints
+  ));
+  const tbs = seq(
+    der(0xa0, der(0x02, Buffer.from([2]))),                                          // v3
+    der(0x02, serial), sigAlg, name,
+    seq(utcTime(new Date(now - 864e5)), utcTime(new Date(now + 825 * 864e5))),
+    name, publicKey.export({ type: 'spki', format: 'der' }), exts
+  );
+  const sig = crypto.sign('sha256', tbs, privateKey);
+  const cert = seq(tbs, sigAlg, der(0x03, Buffer.concat([Buffer.from([0]), sig])));
+  const b64 = cert.toString('base64').match(/.{1,64}/g).join('\n');
+  return {
+    key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    cert: '-----BEGIN CERTIFICATE-----\n' + b64 + '\n-----END CERTIFICATE-----\n'
+  };
+}
+
 function ensureCert() {
   const dir = path.join(__dirname, 'certs');
-  const key = path.join(dir, 'key.pem'), cert = path.join(dir, 'cert.pem');
-  const read = () => ({ key: fs.readFileSync(key), cert: fs.readFileSync(cert) });
-  if (fs.existsSync(key) && fs.existsSync(cert)) return read();
-  fs.mkdirSync(dir, { recursive: true });
-  const san = ['DNS:localhost', 'IP:127.0.0.1'].concat(lanIPs().map(ip => 'IP:' + ip)).join(',');
-  const base = ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', cert, '-days', '825', '-subj', '/CN=Magic Mirror'];
-  // Windows: openssl dažniausiai yra Git for Windows aplanke, bet ne PATH kintamajame
-  const bins = ['openssl'];
-  if (process.platform === 'win32') {
-    for (const root of [process.env.ProgramFiles, process.env['ProgramFiles(x86)'], process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs')]) {
-      if (!root) continue;
-      for (const sub of ['Git\\usr\\bin\\openssl.exe', 'Git\\mingw64\\bin\\openssl.exe']) {
-        const f = path.join(root, sub);
-        if (fs.existsSync(f)) bins.push(f);
-      }
+  const key = path.join(dir, 'key.pem'), cert = path.join(dir, 'cert.pem'), ipsFile = path.join(dir, 'ips.txt');
+  const ips = lanIPs().filter(ip => /^\d+\.\d+\.\d+\.\d+$/.test(ip));
+  try {
+    // Naudojame esamą sertifikatą, jei kompiuterio adresai nepasikeitė
+    if (fs.existsSync(key) && fs.existsSync(cert)) {
+      const known = fs.existsSync(ipsFile) ? fs.readFileSync(ipsFile, 'utf8').split(',') : null;
+      if (!known || ips.every(ip => known.includes(ip))) return { key: fs.readFileSync(key), cert: fs.readFileSync(cert) };
     }
+    const c = makeSelfSignedCert(ips);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(key, c.key); fs.writeFileSync(cert, c.cert); fs.writeFileSync(ipsFile, ips.join(','));
+    return c;
+  } catch (e) {
+    console.error('  Sertifikato klaida:', e.message);
+    return null;
   }
-  for (const bin of bins) {
-    for (const args of [base.concat(['-addext', 'subjectAltName=' + san]), base]) {
-      try { execFileSync(bin, args, { stdio: 'ignore' }); return read(); } catch (e) { /* bandome kitą variantą */ }
-    }
-  }
-  return null;
 }
 
 /* ---------- Statiniai failai ---------- */
@@ -178,5 +218,5 @@ const ip = lanIPs()[0] || 'localhost';
 console.log('\n  Magic Mirror veikia!\n');
 console.log('  Televizoriuje atidarykite:   http://' + ip + ':' + HTTP_PORT + '/tv');
 if (tls) console.log('  Telefonas (be TV):           https://' + ip + ':' + HTTPS_PORT + '/');
-else console.log('  DĖMESIO: nepavyko sukurti https sertifikato (reikia „openssl"). Telefono kamera veiks tik per https.');
+else console.log('  DĖMESIO: nepavyko sukurti https sertifikato. Telefono kamera veiks tik per https.');
 console.log('\n  Sustabdyti: Ctrl+C\n');

@@ -19,7 +19,7 @@ Vaizdas apdorojamas tik telefone (MediaPipe naršyklėje). Į serverį ir televi
 
 ## Paleidimas su televizoriumi
 
-Reikia kompiuterio su [Node.js](https://nodejs.org) 18+ ir `openssl` (Mac ir Linux jį turi; Windows – įdiekite [Git for Windows](https://git-scm.com), serveris jo `openssl` ras pats). Papildomų paketų nereikia.
+Reikia kompiuterio su [Node.js](https://nodejs.org) 18+. Daugiau nieko diegti nereikia – https sertifikatą serveris sukuria pats.
 
 Paleidimas dukart spustelėjus:
 
